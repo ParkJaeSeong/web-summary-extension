@@ -1,153 +1,76 @@
-# Glarity - Summary for Google/YouTube with ChatGPT
+# PageMind
 
-Glarity Summary: an open-source ChatGPT Summary extension for YouTube, Google, Twitter, and any webpage. It provides cross-language summaries to effortlessly summarize videos, searches, PDFs, emails, and webpages. It supports free side-by-side translations, email writing assistance, Web Content Q&A, and much more
-Download the experience package ([https://github.com/sparticleinc/chatgpt-google-summary-extension/tree/main/packages](https://github.com/sparticleinc/chatgpt-google-summary-extension/tree/main/packages)) and adding it manually ([https://github.com/sparticleinc/chatgpt-google-summary-extension#chrome](https://github.com/sparticleinc/chatgpt-google-summary-extension#chrome)).
+PageMind is a local-first Chrome assistant for chatting with webpages, YouTube videos, and PDFs —
+with citations you can follow back to the source.
 
-## Sponsors
-
-
-<p align="center">
-  <a target="_blank" href="https://felo.ai">
-  <img alt="Felo AI"" src="https://felo.ai/blog/img-blog/logo.svg?sanitize=true" width="40">  <br />Felo AI
-  </a>
-</p>
-
-## Supported Websites
-
-- Google
-- YouTube
-- Yahoo! JAPAN ニュース
-- PubMed
-- PMC
-- NewsPicks
-- Github
-- Nikkei
-- Bing
-- Google Patents
-- Bilibili
-- Any website
-  (summary list:https://blog.glarity.app/getting-started/user-guide/summary-list)
-
-## Installation
-
-[Add from Chrome Web Store](https://chrome.google.com/webstore/detail/summary-for-google-with-c/cmnlolelipjlhfkhpohphpedmkfbobjc)
-[Add from Mozilla Add-on Store](https://addons.mozilla.org/zh-CN/firefox/addon/glarity/)
+페이지마인드는 웹페이지, YouTube 영상, PDF를 읽고 출처 인용과 함께 대화할 수 있는 로컬 우선
+Chrome 확장 프로그램입니다.
 
 ## Features
 
-- Side-by-Side Translation (mirror translation, immersive translate)
-- Gmail quick reply
-- Supports Google search
-- Supports YouTube （YouTube videos transcript, summary, key moment)
-- Supports Github
-- Supports Bing
-- Supports Yahoo! JAPAN ニュース
-- Supports PubMed
-- Supports PMC
-- Supports NewsPicks
-- Supports Nikkei
-- Supports Google Patents
-- Support bilibili
-- Support twitter summary
-- Support summary of any web page
-- Support for iOS Safari/ macOS Safari
-- Supports the official OpenAI API (GPT-3.5-turbo/text-davinci-003)
-- Supports ChatGPT Plus
-- Markdown rendering
-- Code highlights
-- Dark mode
-- Provide feedback to improve ChatGPT
-- Copy to clipboard
-- Switch languages
-- Glarity AI model
+- One Side Panel experience for webpages, YouTube captions, and text-based PDFs
+- Source navigation to webpage paragraphs, video timestamps, and PDF pages
+- OpenAI, Gemini, Anthropic Claude, and OpenAI-compatible/local chat providers
+- Independent OpenAI, Gemini, and OpenAI-compatible/local embedding providers
+- Local conversations, content cache, semantic embeddings, and page memory
+- Reusable prompt buttons, Markdown download, and direct Obsidian Vault export
+- English and Korean interface
 
-## Screenshot
+PageMind stores its working data on the current device. Content is sent to a configured AI provider
+only for the action that needs it. See [PRIVACY.md](PRIVACY.md) and
+[docs/PERMISSIONS.md](docs/PERMISSIONS.md).
 
-### Google
+## Supported content
 
-![Screenshot](screenshots/google-vs-chatgpt.png?raw=true)
-![Screenshot](screenshots/extension-google.png?raw=true)
+- Ordinary HTTP(S) webpages with readable text
+- YouTube videos with accessible manual or automatic captions
+- HTTP(S) and local text-based PDF files
 
-### YouTube
+## Known limitations
 
-![Screenshot](screenshots/extension-youtube.jpeg?raw=true)
+- Scanned or image-only PDFs require OCR and are not supported in the first beta.
+- YouTube videos without accessible captions cannot be transcribed by PageMind.
+- Browser-protected pages, including `chrome://` pages and the Chrome Web Store, cannot be read.
+- Page changes are captured when PageMind refreshes; continuous live-page monitoring is not yet
+  included.
+- Cloud sync, accounts, Firefox, and Safari builds are outside the first beta.
 
-### Bilibili
+## Install an unpacked development build
 
-![Screenshot](screenshots/bilibili-cn.webp?raw=true)
+1. Install Node.js 20 or newer and enable Corepack, or install pnpm 9.15.9.
+2. Run `pnpm install --frozen-lockfile`.
+3. Run `pnpm build`.
+4. Open `chrome://extensions`, enable Developer mode, and choose **Load unpacked**.
+5. Select `build/chromium`.
 
-### iOS Safari /macOS Safari
+The release ZIP is generated as `packages/PageMind-0.1.0-chromium.zip`.
 
-![Screenshot](screenshots/iOS-Safari-en.webp?raw=true)
-![Screenshot](screenshots/macOS-Safari-en.webp?raw=true)
+## Development
 
-### Github
+```sh
+pnpm dev          # development build
+pnpm test:watch   # tests in watch mode
+pnpm typecheck    # TypeScript validation
+pnpm lint         # ESLint
+pnpm check        # typecheck, lint, format, tests, and production build
+```
 
-![Github](screenshots/github-en.png?raw=true)
+The authoritative package manager is pnpm 9.15.9. Generated `build/` and `packages/` content is not
+committed. Release readiness is tracked in
+[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
-### Bing
+## Security and privacy
 
-![Bing](screenshots/bing-en.png)
+- [Privacy policy](PRIVACY.md)
+- [Security policy](SECURITY.md)
+- [Permission rationale](docs/PERMISSIONS.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
 
-### Google Patents
+## Credits and license
 
-![Google Patents](screenshots/google-patents-en.png)
+PageMind evolved from an open-source browser-extension codebase originally derived from
+`wong2/chatgpt-google-extension`. Current PageMind functionality and architecture have been
+substantially rewritten.
 
-### Yahoo! JAPAN ニュース
-
-![Screenshot](screenshots/yahoo-japan.jpg?raw=true)
-
-### PubMed
-
-![Screenshot](screenshots/pubmed.jpg?raw=true)
-
-### PMC
-
-![Screenshot](screenshots/PMC-en.png?raw=true)
-
-### NewsPicks
-
-![Screenshot](screenshots/newspicks-jp.jpg?raw=true)
-
-### Nikkei
-
-![Nikkei](screenshots/nikkei-jp.png)
-
-## Troubleshooting
-
-### How to make it work in Brave
-
-![Screenshot](screenshots/brave.png?raw=true)
-Disable "Prevent sites from fingerprinting me based on my language preferences" in `brave://settings/shields`
-
-## Build from source
-
-1. Clone the repo
-2. Install dependencies with `npm`
-3. `npm run build`
-
-### Packages
-
-- [Chromium](packages/Glarity-chromium-beta.zip)
-- [Firefox](packages/Glarity-firefox-beta.zip)
-
-### Chrome
-
-1. Go to `chrome://extensions/`.
-2. At the top right, turn on `Developer mode`.
-3. Click `Load unpacked`.
-4. Find and select extension folder(`build/chromium/`).
-
-### Firefox
-
-1. Go to `about:debugging#/runtime/this-firefox`.
-2. Click `Load Temporary Add-on`.
-3. Find and select the extension file(`build/firefox.zip`).
-
-## Credit
-
-This project is a fork of [wong2/chatgpt-google-extension](https://github.com/wong2/chatgpt-google-extension), and borrows code from [qunash/chatgpt-advanced](https://github.com/qunash/chatgpt-advanced) & [YouTube Summary with ChatGPT](https://github.com/kazuki-sf/YouTube_Summary_with_ChatGPT)
-
-## License
-
-[GPL-3.0 license](LICENSE).
+The project is licensed under [GPL-3.0](LICENSE). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+for bundled third-party components.

@@ -1,6 +1,17 @@
 import { createParser } from 'eventsource-parser'
-import { isEmpty } from 'lodash-es'
 import { streamAsyncIterable } from './stream-async-iterable.js'
+
+async function stableProviderError(response: Response) {
+  try {
+    const body = await response.json()
+    const code = body?.error?.code || body?.code
+    if (code === 'paid_subscription_required' || code === 'insufficient_credits') {
+      return 'PROVIDER_SUBSCRIPTION_REQUIRED'
+    }
+  } catch {
+    // Provider error bodies are optional and never exposed to the UI.
+  }
+}
 
 export async function fetchSSE(
   resource: string,
@@ -9,8 +20,9 @@ export async function fetchSSE(
   const { onMessage, ...fetchOptions } = options
   const resp = await fetch(resource, fetchOptions)
   if (!resp.ok) {
-    const error = await resp.json().catch(() => ({}))
-    throw new Error(!isEmpty(error) ? JSON.stringify(error) : `${resp.status} ${resp.statusText}`)
+    // Do not surface provider response bodies: they may echo request content or credentials.
+    const stableError = await stableProviderError(resp)
+    throw new Error(stableError || `${resp.status} ${resp.statusText || 'Provider request failed'}`)
   }
   const parser = createParser((event) => {
     if (event.type === 'event') {

@@ -1,11 +1,12 @@
 node_modules/
 build/
+packages/
 .DS_Store
 .env
-docs/
+claude_session_id
+codex_session_id
 
 ## Build generated
-build/
 DerivedData/
 
 ## Various settings

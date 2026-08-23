@@ -2,7 +2,7 @@
   "name": "__MSG_appName__",
   "description": "__MSG_appDesc__",
   "default_locale": "en",
-  "version": "1.7.0",
+  "version": "0.1.0",
   "manifest_version": 3,
   "icons": {
     "16": "logo-16.png",
@@ -10,34 +10,51 @@
     "48": "logo-48.png",
     "128": "logo-128.png"
   },
-  "host_permissions": [
-    "https://*.openai.com/"
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "file:///*"
   ],
   "permissions": [
     "storage",
     "activeTab",
-    "tabs"
+    "tabs",
+    "sidePanel",
+    "scripting",
+    "offscreen",
+    "contextMenus"
   ],
   "background": {
     "service_worker": "background.js"
   },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "action": {},
+  "commands": {
+    "ask-selection": {
+      "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Command+Shift+Y" },
+      "description": "__MSG_askSelectionCommand__"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
   },
   "content_scripts": [
     {
-      "matches": [
-        "<all_urls>",
-        "*://*/*"
-      ],
-      "js": [
-        "content-script.js"
-      ],
-      "css": [
-        "content-script.css"
-      ]
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["logo-48.png"],
+      "matches": ["<all_urls>"]
     }
   ]
 }

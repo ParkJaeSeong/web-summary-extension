@@ -1,275 +1,382 @@
 import {
-  CssBaseline,
-  GeistProvider,
-  Radio,
-  Select,
-  Text,
-  Toggle,
-  useToasts,
-  Divider,
-} from '@geist-ui/core'
-import { useCallback, useEffect, useMemo, useState } from 'preact/hooks'
-import '@/assets/styles/base.scss'
-import {
+  DEFAULT_PROMPT_ACTIONS,
   getUserConfig,
   Language,
-  Theme,
-  TriggerMode,
-  TRIGGER_MODE_TEXT,
+  PromptAction,
   updateUserConfig,
-  DEFAULT_PAGE_SUMMARY_BLACKLIST,
 } from '@/config'
-import { PageSummaryProps } from './components/PageSummary'
-import ProviderSelect from './ProviderSelect'
-import { config as supportSites } from '@/content-script/search-engine-configs'
-import { isIOS } from '@/utils/utils'
-import Header from './components/Header'
-import CustomizePrompt from './components/CustomizePrompt'
-import PageSummaryComponent from './components/PageSummary'
-import EnableGlarity from './components/EnableGlarity'
-import { detectSystemColorScheme } from '@/utils/utils'
 import {
-  videoSummaryPromptHightligt,
-  searchPromptHighlight,
-  pageSummaryPromptHighlight,
-  commentSummaryPromptHightligt,
-} from '@/utils/prompt'
-
+  clearContentCache,
+  ContentCacheStats,
+  getContentCacheStats,
+  pruneContentCache,
+} from '@/storage/content-cache'
+import { t } from '@/i18n'
+import {
+  Button,
+  Card,
+  CssBaseline,
+  GeistProvider,
+  Select,
+  Text,
+  Textarea,
+  Toggle,
+  useToasts,
+} from '@geist-ui/core'
+import { useCallback, useEffect, useState } from 'preact/hooks'
+import Header from './components/Header'
+import ProviderSelect from './ProviderSelect'
+import LocalDataManager from './LocalDataManager'
 import './styles.scss'
 
-function OptionsPage(
-  props: {
-    theme: Theme
-    onThemeChange: (theme: Theme) => void
-  } & PageSummaryProps,
-) {
-  const {
-    setPageSummaryEnable,
-    pageSummaryEnable,
-    pageSummaryWhitelist,
-    pageSummaryBlacklist,
-    setPageSummaryWhitelist,
-    setPageSummaryBlacklist,
-  } = props
-  const [triggerMode, setTriggerMode] = useState<TriggerMode>(TriggerMode.Always)
-  const [language, setLanguage] = useState<Language>(Language.Auto)
+function OptionsPage() {
+  const [language, setLanguage] = useState(Language.Auto)
+  const [promptActions, setPromptActions] = useState<PromptAction[]>(DEFAULT_PROMPT_ACTIONS)
+  const [pageButtonEnabled, setPageButtonEnabled] = useState(true)
+  const [automaticIndexingEnabled, setAutomaticIndexingEnabled] = useState(false)
+  const [cacheStats, setCacheStats] = useState<ContentCacheStats>()
+  const [cacheMaxAgeDays, setCacheMaxAgeDays] = useState(30)
+  const [cacheMaxItems, setCacheMaxItems] = useState(50)
+  const [cacheRevision, setCacheRevision] = useState(0)
+  const [obsidianVaultFolder, setObsidianVaultFolder] = useState('PageMind')
   const { setToast } = useToasts()
-  const [allSites, setAllSites] = useState<string[]>([])
-  const [enableSites, setEnableSites] = useState<string[]>([])
-  const [prompt, setPrompt] = useState<string>('')
-  const [promptSearch, setPromptSearch] = useState<string>('')
-  const [promptPage, setPromptPage] = useState<string>('')
-  const [promptComment, setPromptComment] = useState<string>('')
 
-  const onTriggerModeChange = useCallback(
-    (mode: TriggerMode) => {
-      setTriggerMode(mode)
-      updateUserConfig({ triggerMode: mode })
-      setToast({ text: 'Changes saved', type: 'success' })
-    },
-    [setToast],
-  )
-
-  const onThemeChange = useCallback(
-    (theme: Theme) => {
-      updateUserConfig({ theme })
-      props.onThemeChange(theme)
-      setToast({ text: 'Changes saved', type: 'success' })
-    },
-    [props, setToast],
-  )
-
-  const onLanguageChange = useCallback(
-    (language: Language) => {
-      updateUserConfig({ language })
-      setToast({ text: 'Changes saved', type: 'success' })
-    },
-    [setToast],
-  )
-
-  const getSplitString = (str: string) => {
-    if (str && str.includes('Chinese')) {
-      return `Chinese (${str.split('Chinese')[1] || ''})`
-    }
-
-    return str ?? ''
-  }
+  const refreshCacheStats = useCallback(() => {
+    getContentCacheStats().then(setCacheStats)
+  }, [])
 
   useEffect(() => {
     getUserConfig().then((config) => {
-      setTriggerMode(config.triggerMode)
       setLanguage(config.language)
-
-      setPrompt(config.prompt ? config.prompt : videoSummaryPromptHightligt)
-      setPromptSearch(config.promptSearch ? config.promptSearch : searchPromptHighlight)
-      setPromptPage(config.promptPage ? config.promptPage : pageSummaryPromptHighlight)
-      setPromptComment(config.promptComment ? config.promptComment : commentSummaryPromptHightligt)
-
-      const sites =
-        Object.values(supportSites).map((site) => {
-          return site.siteValue
-        }) || []
-
-      setAllSites(sites)
-      const enableSites = config.enableSites
-      setEnableSites(enableSites ? enableSites : sites)
+      setPromptActions(config.promptActions)
+      setPageButtonEnabled(config.pageButtonEnabled)
+      setAutomaticIndexingEnabled(config.automaticIndexingEnabled)
+      setCacheMaxAgeDays(config.contentCacheMaxAgeDays)
+      setCacheMaxItems(config.contentCacheMaxItems)
+      setObsidianVaultFolder(config.obsidianVaultFolder)
     })
+    refreshCacheStats()
+  }, [refreshCacheStats])
+
+  const clearLocalContentCache = useCallback(async () => {
+    if (
+      !window.confirm(t('clearCacheConfirm', 'Delete all locally cached content and embeddings?'))
+    )
+      return
+    await clearContentCache()
+    refreshCacheStats()
+    setCacheRevision((revision) => revision + 1)
+    setToast({ text: t('cacheCleared', 'Local content cache cleared'), type: 'success' })
+  }, [refreshCacheStats, setToast])
+
+  const saveCachePolicy = useCallback(async () => {
+    const days = Math.min(3650, Math.max(1, cacheMaxAgeDays || 30))
+    const items = Math.min(1000, Math.max(1, cacheMaxItems || 50))
+    setCacheMaxAgeDays(days)
+    setCacheMaxItems(items)
+    await updateUserConfig({ contentCacheMaxAgeDays: days, contentCacheMaxItems: items })
+    await pruneContentCache()
+    setCacheStats(await getContentCacheStats())
+    setToast({ text: t('storagePolicySaved', 'Storage policy saved'), type: 'success' })
+  }, [cacheMaxAgeDays, cacheMaxItems, setToast])
+
+  const updatePromptAction = useCallback((id: string, updates: Partial<PromptAction>) => {
+    setPromptActions((actions) =>
+      actions.map((action) => (action.id === id ? { ...action, ...updates } : action)),
+    )
   }, [])
 
+  const addPromptAction = useCallback(() => {
+    setPromptActions((actions) => [
+      ...actions,
+      { id: crypto.randomUUID(), label: t('newAction', 'New action'), prompt: '' },
+    ])
+  }, [])
+
+  const save = useCallback(
+    async (updates: Parameters<typeof updateUserConfig>[0]) => {
+      await updateUserConfig(updates)
+      setToast({ text: t('changesSaved', 'Changes saved'), type: 'success' })
+    },
+    [setToast],
+  )
+
   return (
-    <div className="glarity--container glarity--mx-auto">
+    <div className="options-shell">
       <Header />
+      <main className="options-page">
+        <Text h2>{t('settings', 'Settings')}</Text>
 
-      <main className="glarity--w-[900px] glarity--mx-auto glarity--mt-14 glarity--options">
-        <Text h2>Options</Text>
-
-        {/* Trigger Mode */}
-        {!isIOS && (
-          <>
-            <Text h3 className="glarity--mt-5">
-              Trigger Mode
-            </Text>
-            <Radio.Group
-              value={triggerMode}
-              onChange={(val) => onTriggerModeChange(val as TriggerMode)}
-            >
-              {Object.entries(TRIGGER_MODE_TEXT).map(([value, texts]) => {
-                return (
-                  <Radio key={value} value={value}>
-                    {texts.title}
-                    <Radio.Description>{texts.desc}</Radio.Description>
-                  </Radio>
-                )
-              })}
-            </Radio.Group>
-          </>
-        )}
-
-        {/* Theme */}
-        <Text h3 className="glarity--mt-5">
-          Theme
-        </Text>
-        <Radio.Group value={props.theme} onChange={(val) => onThemeChange(val as Theme)} useRow>
-          {Object.entries(Theme).map(([k, v]) => {
-            return (
-              <Radio key={v} value={v}>
-                {k}
-              </Radio>
-            )
-          })}
-        </Radio.Group>
-
-        {/* Language */}
-        <Text h3 className="glarity--mt-5 glarity--mb-0">
-          Language
-        </Text>
-        <Text className="glarity--my-1">
-          The language used in ChatGPT response. <span className="glarity--italic">Auto</span> is
-          recommended.
-        </Text>
+        <Text h3>{t('responseLanguage', 'Response language')}</Text>
         <Select
           value={language}
-          placeholder="Choose one"
-          onChange={(val) => onLanguageChange(val as Language)}
+          onChange={(value) => {
+            const nextLanguage = value as Language
+            setLanguage(nextLanguage)
+            save({ language: nextLanguage })
+          }}
         >
-          {Object.entries(Language).map(([k, v]) => (
-            <Select.Option key={k} value={v}>
-              {getSplitString(String(k))}
+          {Object.entries(Language).map(([label, value]) => (
+            <Select.Option key={value} value={value}>
+              {label}
             </Select.Option>
           ))}
         </Select>
 
-        {/* AI Provider */}
-        <Text h3 className="glarity--mt-5 glarity--mb-0">
-          AI Provider
-        </Text>
+        <Text h3>{t('aiProvider', 'AI provider')}</Text>
         <ProviderSelect />
 
-        <CustomizePrompt
-          prompt={prompt}
-          promptSearch={promptSearch}
-          setPrompt={setPrompt}
-          setPromptSearch={setPromptSearch}
-          promptPage={promptPage}
-          setPromptPage={setPromptPage}
-          promptComment={promptComment}
-          setPromptComment={setPromptComment}
-        />
-
-        {/* Enable/Disable Glarity */}
-        <EnableGlarity
-          enableSites={enableSites}
-          setEnableSites={setEnableSites}
-          allSites={allSites}
-          supportSites={supportSites}
-        />
-
-        {/* Misc */}
-        {/* <Text h3 className="glarity--mt-8">
-          Misc
-        </Text>
-        <div className="glarity--flex glarity--flex-row glarity--items-center glarity--gap-4">
-          <Toggle initialChecked disabled />
-          <Text b margin={0}>
-            Auto delete conversations generated by search
+        <Text h3>{t('promptActions', 'Prompt actions')}</Text>
+        <Card>
+          <Text small>
+            {t(
+              'promptActionsDescription',
+              'Create reusable buttons for prompts you use frequently.',
+            )}
           </Text>
-        </div> */}
+          <div className="prompt-actions-editor">
+            {promptActions.map((action) => (
+              <div className="prompt-action-editor" key={action.id}>
+                <input
+                  value={action.label}
+                  maxLength={30}
+                  placeholder={t('buttonLabel', 'Button label')}
+                  onInput={(event) =>
+                    updatePromptAction(action.id, { label: event.currentTarget.value })
+                  }
+                />
+                <Textarea
+                  width="100%"
+                  value={action.prompt}
+                  placeholder={t(
+                    'promptPlaceholder',
+                    'Enter the prompt sent when this button is clicked.',
+                  )}
+                  onChange={(event) =>
+                    updatePromptAction(action.id, { prompt: event.target.value })
+                  }
+                />
+                <button
+                  className="text-button text-button--danger"
+                  onClick={() =>
+                    setPromptActions((actions) =>
+                      actions.filter((candidate) => candidate.id !== action.id),
+                    )
+                  }
+                >
+                  {t('remove', 'Remove')}
+                </button>
+              </div>
+            ))}
+            <button className="text-button" onClick={addPromptAction}>
+              {t('addPromptButton', '+ Add prompt button')}
+            </button>
+          </div>
+          <Card.Footer>
+            <Button
+              auto
+              scale={2 / 3}
+              type="success"
+              onClick={() =>
+                save({
+                  promptActions: promptActions.filter(
+                    (action) => action.label.trim() && action.prompt.trim(),
+                  ),
+                })
+              }
+            >
+              {t('savePromptButtons', 'Save prompt buttons')}
+            </Button>
+          </Card.Footer>
+        </Card>
 
-        {/* <Divider /> */}
+        <Text h3>{t('pageButton', 'Page button')}</Text>
+        <Card>
+          <div className="setting-row">
+            <div>
+              <strong>{t('showPageMind', 'Show PageMind on webpages')}</strong>
+              <p>
+                {t(
+                  'pageButtonPrivacy',
+                  'Nothing is sent until you open the side panel and ask a question.',
+                )}
+              </p>
+            </div>
+            <Toggle
+              checked={pageButtonEnabled}
+              onChange={(event) => {
+                const enabled = event.target.checked
+                setPageButtonEnabled(enabled)
+                save({ pageButtonEnabled: enabled })
+              }}
+            />
+          </div>
+        </Card>
 
-        {/* Page Summary */}
-        <PageSummaryComponent
-          pageSummaryEnable={pageSummaryEnable}
-          setPageSummaryEnable={setPageSummaryEnable}
-          pageSummaryWhitelist={pageSummaryWhitelist}
-          pageSummaryBlacklist={pageSummaryBlacklist}
-          setPageSummaryWhitelist={setPageSummaryWhitelist}
-          setPageSummaryBlacklist={setPageSummaryBlacklist}
-        />
+        <Text h3>{t('obsidianExport', 'Obsidian export')}</Text>
+        <Card>
+          <Text small>
+            {t(
+              'obsidianFolderDescription',
+              'Notes are saved in this folder inside the Vault you select. Nested paths such as Inbox/PageMind are supported.',
+            )}
+          </Text>
+          <div className="obsidian-folder-setting">
+            <label>
+              <span>{t('obsidianFolder', 'Folder inside Vault')}</span>
+              <input
+                value={obsidianVaultFolder}
+                placeholder="PageMind"
+                onInput={(event) => setObsidianVaultFolder(event.currentTarget.value)}
+              />
+            </label>
+            <Button
+              auto
+              scale={2 / 3}
+              onClick={() => save({ obsidianVaultFolder: obsidianVaultFolder.trim() })}
+            >
+              {t('saveObsidianFolder', 'Save folder')}
+            </Button>
+          </div>
+        </Card>
+
+        <Text h3>{t('localContentStorage', 'Local content storage')}</Text>
+        <Card>
+          <div className="setting-row">
+            <div>
+              <strong>
+                {t(
+                  'cachedItemCount',
+                  '$1 cached content items',
+                  String(cacheStats?.documents || 0),
+                )}
+              </strong>
+              <p>
+                {t('cacheStats', '$1 content chunks · $2 embeddings · $3 MB estimated', [
+                  (cacheStats?.contentChunks || 0).toLocaleString(),
+                  (cacheStats?.embeddedChunks || 0).toLocaleString(),
+                  ((cacheStats?.approximateBytes || 0) / 1024 / 1024).toFixed(1),
+                ])}
+              </p>
+            </div>
+            <Button auto scale={2 / 3} type="error" ghost onClick={clearLocalContentCache}>
+              {t('clearCache', 'Clear cache')}
+            </Button>
+          </div>
+          <Text small>
+            {t('clearCacheNotice', 'Clearing cached content does not delete conversations.')}
+          </Text>
+          <div className="cache-policy">
+            <label>
+              <span>{t('keepContentFor', 'Keep content for')}</span>
+              <input
+                type="number"
+                min="1"
+                max="3650"
+                value={cacheMaxAgeDays}
+                onInput={(event) => setCacheMaxAgeDays(Number(event.currentTarget.value))}
+              />
+              <span>{t('days', 'days')}</span>
+            </label>
+            <label>
+              <span>{t('maximumItems', 'Maximum items')}</span>
+              <input
+                type="number"
+                min="1"
+                max="1000"
+                value={cacheMaxItems}
+                onInput={(event) => setCacheMaxItems(Number(event.currentTarget.value))}
+              />
+            </label>
+            <Button auto scale={2 / 3} onClick={saveCachePolicy}>
+              {t('saveStoragePolicy', 'Save storage policy')}
+            </Button>
+          </div>
+        </Card>
+
+        <LocalDataManager key={cacheRevision} onChange={refreshCacheStats} />
+
+        <Text h3>{t('privacyAndCost', 'Privacy and AI usage')}</Text>
+        <Card>
+          <div className="privacy-list">
+            <div>
+              <strong>{t('storedOnDevice', 'Stored on this device')}</strong>
+              <p>
+                {t(
+                  'storedOnDeviceDescription',
+                  'Page context, conversations, embeddings, prompt buttons, and page memory are stored in browser local storage and IndexedDB.',
+                )}
+              </p>
+            </div>
+            <div>
+              <strong>{t('sentToChatProvider', 'Sent to the chat provider')}</strong>
+              <p>
+                {t(
+                  'sentToChatProviderDescription',
+                  'Only when you ask: your question, conversation, and selected source excerpts.',
+                )}
+              </p>
+            </div>
+            <div>
+              <strong>{t('sentToEmbeddingProvider', 'Sent to the embedding provider')}</strong>
+              <p>
+                {t(
+                  'sentToEmbeddingProviderDescription',
+                  'When semantic indexing or search is enabled: content chunks, compact page cards, and search queries.',
+                )}
+              </p>
+            </div>
+            <div>
+              <strong>{t('pdfAccessDisclosure', 'PDF website access')}</strong>
+              <p>
+                {t(
+                  'pdfAccessDisclosureDescription',
+                  'PageMind requests access only to the PDF website you choose. Local files require Chrome file access permission.',
+                )}
+              </p>
+            </div>
+            <div>
+              <strong>{t('apiKeyStorage', 'API key storage')}</strong>
+              <p>
+                {t(
+                  'apiKeyStorageDescription',
+                  'API keys are stored in Chrome local extension storage, not sync storage. They are not protected like passwords from someone who can access your browser profile.',
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="setting-row setting-row--bordered">
+            <div>
+              <strong>{t('automaticIndexing', 'Automatically create content embeddings')}</strong>
+              <p>
+                {t(
+                  'automaticIndexingDescription',
+                  'May send many content chunks to a remote embedding API and may incur provider charges.',
+                )}
+              </p>
+            </div>
+            <Toggle
+              checked={automaticIndexingEnabled}
+              onChange={(event) => {
+                const enabled = event.target.checked
+                setAutomaticIndexingEnabled(enabled)
+                save({ automaticIndexingEnabled: enabled })
+              }}
+            />
+          </div>
+        </Card>
       </main>
     </div>
   )
 }
 
-function App() {
-  const [theme, setTheme] = useState(Theme.Auto)
-  const [pageSummaryEnable, setPageSummaryEnable] = useState(true)
-  const [pageSummaryWhitelist, setPageSummaryWhitelist] = useState<string>('')
-  const [pageSummaryBlacklist, setPageSummaryBlacklist] = useState<string>('')
-
-  const themeType = useMemo(() => {
-    if (theme === Theme.Auto) {
-      return detectSystemColorScheme()
-    }
-    return theme
-  }, [theme])
-
-  useEffect(() => {
-    getUserConfig().then((config) => {
-      setTheme(config.theme)
-      setPageSummaryEnable(config.pageSummaryEnable)
-      setPageSummaryWhitelist(config.pageSummaryWhitelist)
-      setPageSummaryBlacklist(
-        config.pageSummaryBlacklist ? config.pageSummaryBlacklist : DEFAULT_PAGE_SUMMARY_BLACKLIST,
-      )
-    })
-  }, [])
+export default function App() {
+  const themeType = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 
   return (
     <GeistProvider themeType={themeType}>
       <CssBaseline />
-      <OptionsPage
-        theme={theme}
-        onThemeChange={setTheme}
-        setPageSummaryEnable={setPageSummaryEnable}
-        pageSummaryEnable={pageSummaryEnable}
-        pageSummaryWhitelist={pageSummaryWhitelist}
-        pageSummaryBlacklist={pageSummaryBlacklist}
-        setPageSummaryWhitelist={setPageSummaryWhitelist}
-        setPageSummaryBlacklist={setPageSummaryBlacklist}
-      />
+      <OptionsPage />
     </GeistProvider>
   )
 }
-
-export default App
