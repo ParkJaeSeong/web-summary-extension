@@ -28,7 +28,7 @@ function openHandleDatabase() {
   })
 }
 
-async function storedVaultHandle() {
+export async function storedVaultHandle() {
   const database = await openHandleDatabase()
   try {
     return await new Promise<FileSystemDirectoryHandle | undefined>((resolve, reject) => {

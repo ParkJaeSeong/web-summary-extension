@@ -27,6 +27,7 @@ import { useCallback, useEffect, useState } from 'preact/hooks'
 import Header from './components/Header'
 import ProviderSelect from './ProviderSelect'
 import LocalDataManager from './LocalDataManager'
+import ObsidianVaultSetting from './ObsidianVaultSetting'
 import './styles.scss'
 
 function OptionsPage() {
@@ -215,6 +216,7 @@ function OptionsPage() {
 
         <Text h3>{t('obsidianExport', 'Obsidian export')}</Text>
         <Card>
+          <ObsidianVaultSetting />
           <Text small>
             {t(
               'obsidianFolderDescription',

@@ -1,4 +1,12 @@
 {
+  "obsidianVault": { "message": "Vault" },
+  "obsidianVaultNotSelected": { "message": "선택한 Vault 없음" },
+  "chooseObsidianVault": { "message": "Vault 선택" },
+  "changeObsidianVault": { "message": "Vault 변경" },
+  "obsidianVaultSelectFailed": { "message": "Vault를 선택하지 못했습니다. 다시 시도해 주세요." },
+  "obsidianVaultLoadFailed": {
+    "message": "저장된 Vault를 불러오지 못했습니다. 다시 선택해 주세요."
+  },
   "appName": { "message": "PageMind" },
   "appDesc": { "message": "로컬 컨텍스트와 메모리로 웹페이지, YouTube 동영상, PDF와 대화합니다" },
   "currentPage": { "message": "현재 페이지" },

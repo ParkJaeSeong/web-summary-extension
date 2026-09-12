@@ -1,4 +1,12 @@
 {
+  "obsidianVault": { "message": "Vault" },
+  "obsidianVaultNotSelected": { "message": "No Vault selected" },
+  "chooseObsidianVault": { "message": "Choose Vault" },
+  "changeObsidianVault": { "message": "Change Vault" },
+  "obsidianVaultSelectFailed": { "message": "Could not select the Vault. Please try again." },
+  "obsidianVaultLoadFailed": {
+    "message": "Could not load the saved Vault. Please select it again."
+  },
   "appName": { "message": "PageMind" },
   "appDesc": {
     "message": "Chat with webpages, YouTube videos, and PDFs using local context and memory"
